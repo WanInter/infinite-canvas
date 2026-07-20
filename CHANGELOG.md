@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-+ [修复] Docker 发布流程自动公开 GHCR 镜像包，服务器可直接拉取部署镜像。
-
 ## v0.9.1 - 2026-07-20
 
 + [调整] 默认发布分支切换为 `waninter`，Docker 镜像发布到 WanInter GHCR 并同步维护 `latest` 标签。
