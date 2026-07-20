@@ -6,9 +6,9 @@
 
 <p align="center">
   <a href="https://linux.do/"><img src="https://img.shields.io/badge/Linux.do-Community-2b6de8?style=flat-square" alt="Linux.do"></a>
-  <a href="https://render.com/deploy?repo=https://github.com/basketikun/infinite-canvas"><img src="https://img.shields.io/badge/Render-Deploy-46e3b7?style=flat-square&logo=render&logoColor=111111" alt="Deploy to Render"></a>
-  <a href="https://github.com/basketikun/infinite-canvas"><img src="https://img.shields.io/github/stars/basketikun/infinite-canvas?style=flat-square&logo=github" alt="GitHub stars"></a>
-  <a href="https://github.com/basketikun/infinite-canvas/tags"><img src="https://img.shields.io/github/v/tag/basketikun/infinite-canvas?style=flat-square&label=version" alt="Version"></a>
+  <a href="https://render.com/deploy?repo=https://github.com/WanInter/infinite-canvas"><img src="https://img.shields.io/badge/Render-Deploy-46e3b7?style=flat-square&logo=render&logoColor=111111" alt="Deploy to Render"></a>
+  <a href="https://github.com/WanInter/infinite-canvas"><img src="https://img.shields.io/github/stars/WanInter/infinite-canvas?style=flat-square&logo=github" alt="GitHub stars"></a>
+  <a href="https://github.com/WanInter/infinite-canvas/tags"><img src="https://img.shields.io/github/v/tag/WanInter/infinite-canvas?style=flat-square&label=version" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-f97316?style=flat-square" alt="License"></a>
   <a href="https://vite.dev/"><img src="https://img.shields.io/badge/Vite-7-646cff?style=flat-square&logo=vite&logoColor=white" alt="Vite"></a>
   <a href="https://reactrouter.com/"><img src="https://img.shields.io/badge/React_Router-7-ca4245?style=flat-square&logo=reactrouter&logoColor=white" alt="React Router"></a>
@@ -51,7 +51,7 @@ AI API Key、Base URL、画布、素材和生成记录默认保存在浏览器�
 ### 本地开发
 
 ```bash
-git clone git@github.com:basketikun/infinite-canvas.git
+git clone git@github.com:WanInter/infinite-canvas.git
 cd infinite-canvas
 cd web
 bun install
@@ -61,7 +61,7 @@ bun run dev
 ### Docker 运行
 
 ```bash
-git clone git@github.com:basketikun/infinite-canvas.git
+git clone git@github.com:WanInter/infinite-canvas.git
 cd infinite-canvas
 docker compose up -d
 ```

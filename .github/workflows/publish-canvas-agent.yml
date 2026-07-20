@@ -3,7 +3,7 @@ name: Publish Canvas Agent
 on:
   push:
     branches:
-      - main
+      - waninter
     paths:
       - "canvas-agent/**"
       - ".github/workflows/publish-canvas-agent.yml"

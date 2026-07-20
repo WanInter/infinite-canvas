@@ -10,7 +10,7 @@ description: 使用 Docker Compose 部署无限画布
 ## 使用发布镜像
 
 ```bash
-git clone git@github.com:basketikun/infinite-canvas.git
+git clone git@github.com:WanInter/infinite-canvas.git
 cd infinite-canvas
 docker compose up -d
 ```
@@ -49,7 +49,7 @@ docker compose -f docker-compose.local.yml up -d --build
 
 ## 数据说明
 
-当前主应用镜像只启动 Next.js。画布、我的素材、生成记录和 AI API Key 默认保存在浏览器本地；第三方提示词由浏览器前端直连拉取，不需要额外挂载数据目录。
+当前主应用镜像以 Nginx 托管 Vite 静态产物。画布、我的素材、生成记录和 AI API Key 默认保存在浏览器本地；第三方提示词由浏览器前端直连拉取，不需要额外挂载数据目录。
 
 ## 统计分析（可选）
 
@@ -67,7 +67,7 @@ docker compose -f docker-compose.local.yml up -d --build
 ```yaml
 services:
   app:
-    image: ghcr.io/basketikun/infinite-canvas:latest
+    image: ghcr.io/waninter/infinite-canvas:latest
     ports:
       - "3000:3000"
     environment:
@@ -81,7 +81,7 @@ services:
 docker run -d -p 3000:3000 \
   -e ANALYTICS_GA4_ID=G-XXXXXXXXXX \
   -e ANALYTICS_BAIDU_ID=e8263761cc5c32f5f7a855b8203b965a \
-  ghcr.io/basketikun/infinite-canvas:latest
+  ghcr.io/waninter/infinite-canvas:latest
 ```
 
 单页应用的路由切换会自动向所有已启用的统计上报 pageview。
