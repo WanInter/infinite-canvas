@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 export type ApiCallFormat = "waninter" | "openai" | "gemini" | "ark";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
+export type ImageGenerationMode = "async" | "sync";
 
 export type ChannelModel = {
     name: string;
@@ -19,6 +20,7 @@ export type ModelChannel = {
     baseUrl: string;
     apiKey: string;
     apiFormat: ApiCallFormat;
+    imageGenerationMode: ImageGenerationMode;
     models: ChannelModel[];
 };
 
@@ -81,6 +83,7 @@ export const defaultConfig: AiConfig = {
             baseUrl: WANINTER_API_BASE_URL,
             apiKey: "",
             apiFormat: "waninter",
+            imageGenerationMode: "async",
             models: [],
         },
     ],
@@ -278,6 +281,7 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
         baseUrl: channel?.baseUrl?.trim() || defaultBaseUrlForApiFormat(apiFormat),
         apiKey: channel?.apiKey || "",
         apiFormat,
+        imageGenerationMode: channel?.imageGenerationMode === "sync" ? "sync" : "async",
         models: normalizeChannelModels(channel?.models),
     };
 }
@@ -338,6 +342,7 @@ export function resolveModelRequestConfig(config: AiConfig, value: string) {
         baseUrl: channel.baseUrl,
         apiKey: channel.apiKey,
         apiFormat: channel.apiFormat,
+        imageGenerationMode: channel.imageGenerationMode,
     };
 }
 

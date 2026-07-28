@@ -73,6 +73,15 @@ type ImageApiResponse = {
     code?: number;
     msg?: string;
 };
+type AsyncImageTask = {
+    task_id?: string;
+    id?: string;
+    status?: string;
+    fail_reason?: string;
+    result_url?: string;
+    data?: ImageApiResponse | { data?: ImageApiResponse; result_url?: string };
+};
+type AsyncImageResponse = AsyncImageTask | { code?: string | number; message?: string; msg?: string; data?: AsyncImageTask };
 type GeminiPart = {
     text?: string;
     inlineData?: { mimeType?: string; data?: string };
@@ -286,6 +295,51 @@ function parseImagePayload(payload: ImageApiResponse) {
     }
 
     return images;
+}
+
+function unwrapAsyncImageResponse(payload: AsyncImageResponse) {
+    if ("code" in payload && payload.code !== undefined && payload.code !== 0 && payload.code !== "success") {
+        throw new Error(payload.message || payload.msg || "请求失败");
+    }
+    return ("code" in payload && payload.data ? payload.data : payload) as AsyncImageTask;
+}
+
+function parseAsyncImageResult(task: AsyncImageTask) {
+    const nested = task.data && "data" in task.data && task.data.data && !Array.isArray(task.data.data) ? task.data.data : task.data;
+    if (nested) {
+        try {
+            return parseImagePayload(nested as ImageApiResponse);
+        } catch {
+            // Some task providers only expose the final URL at the task level.
+        }
+    }
+    const resultUrl = task.result_url || (task.data && "result_url" in task.data ? task.data.result_url : undefined);
+    if (resultUrl) return [{ id: nanoid(), dataUrl: resultUrl }];
+    throw new Error("异步生图任务已完成，但接口没有返回图片");
+}
+
+async function requestWaninterImages(config: AiConfig & { imageGenerationMode?: "async" | "sync" }, payload: Record<string, unknown>, options?: RequestOptions) {
+    try {
+        const created = unwrapAsyncImageResponse(
+            (await axios.post<AsyncImageResponse>(aiApiUrl(config, "/image/generations"), payload, { headers: aiHeaders(config, "application/json"), signal: options?.signal })).data,
+        );
+        const taskId = created.task_id || created.id;
+        if (!taskId) throw new Error("异步生图接口没有返回任务 ID");
+
+        for (let attempt = 0; attempt < 180; attempt += 1) {
+            if (options?.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+            const response = await axios.get<AsyncImageResponse>(aiApiUrl(config, `/image/generations/${taskId}`), { headers: aiHeaders(config), signal: options?.signal });
+            const task = unwrapAsyncImageResponse(response.data);
+            const status = task.status?.toUpperCase();
+            if (status === "SUCCESS" || status === "SUCCEEDED" || status === "COMPLETED") return parseAsyncImageResult(task);
+            if (status === "FAILURE" || status === "FAILED" || status === "CANCELLED" || status === "CANCELED") throw new Error(task.fail_reason || "异步生图失败");
+            if (attempt === 179) throw new Error("异步生图超时，请稍后重试");
+            await delay(Number(response.headers["retry-after"]) * 1000 || 2000, options?.signal);
+        }
+        throw new Error("异步生图超时，请稍后重试");
+    } catch (error) {
+        throw new Error(readAxiosError(error, "异步生图请求失败"));
+    }
 }
 
 function readApiErrorMessage(value: unknown): string {
@@ -765,19 +819,23 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveOpenAiRequestSize(requestConfig.model, quality, config.size);
     const background = normalizeBackground(config.background);
+    const payload = {
+        model: requestConfig.model,
+        prompt: withSystemPrompt(requestConfig, prompt),
+        n,
+        ...(quality ? { quality } : {}),
+        ...(requestSize ? { size: requestSize } : {}),
+        ...(background ? { background } : {}),
+        response_format: "b64_json",
+        output_format: IMAGE_OUTPUT_FORMAT,
+    };
+    if (requestConfig.apiFormat === "waninter" && requestConfig.imageGenerationMode !== "sync") {
+        return requestWaninterImages(requestConfig, payload, options);
+    }
     try {
         const response = await axios.post<ImageApiResponse>(
             aiApiUrl(requestConfig, "/images/generations"),
-            {
-                model: requestConfig.model,
-                prompt: withSystemPrompt(requestConfig, prompt),
-                n,
-                ...(quality ? { quality } : {}),
-                ...(requestSize ? { size: requestSize } : {}),
-                ...(background ? { background } : {}),
-                response_format: "b64_json",
-                output_format: IMAGE_OUTPUT_FORMAT,
-            },
+            payload,
             {
                 headers: aiHeaders(requestConfig, "application/json"),
                 signal: options?.signal,
@@ -858,6 +916,24 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveOpenAiRequestSize(requestConfig.model, quality, config.size);
     const background = normalizeBackground(config.background);
+    if (requestConfig.apiFormat === "waninter" && requestConfig.imageGenerationMode !== "sync" && !mask) {
+        const refs = await Promise.all(references.map((image) => imageToDataUrl(image)));
+        return requestWaninterImages(
+            requestConfig,
+            {
+                model: requestConfig.model,
+                prompt: withSystemPrompt(requestConfig, requestPrompt),
+                image: refs,
+                n,
+                ...(quality ? { quality } : {}),
+                ...(requestSize ? { size: requestSize } : {}),
+                ...(background ? { background } : {}),
+                response_format: "b64_json",
+                output_format: IMAGE_OUTPUT_FORMAT,
+            },
+            options,
+        );
+    }
     const formData = new FormData();
     formData.set("model", requestConfig.model);
     formData.set("prompt", withSystemPrompt(requestConfig, requestPrompt));
@@ -950,6 +1026,20 @@ export async function fetchImageModels(config: Pick<AiConfig, "baseUrl" | "apiKe
 
 export async function fetchChannelModels(channel: ModelChannel) {
     return fetchImageModels({ baseUrl: channel.baseUrl, apiKey: channel.apiKey, apiFormat: channel.apiFormat });
+}
+
+function delay(ms: number, signal?: AbortSignal) {
+    return new Promise<void>((resolve, reject) => {
+        if (signal?.aborted) {
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+        }
+        const timer = window.setTimeout(resolve, ms);
+        signal?.addEventListener("abort", () => {
+            window.clearTimeout(timer);
+            reject(new DOMException("Aborted", "AbortError"));
+        }, { once: true });
+    });
 }
 
 const defaultGeminiConfig: Pick<AiConfig, "baseUrl" | "apiKey" | "apiFormat" | "model" | "systemPrompt"> = {
