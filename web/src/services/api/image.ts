@@ -194,6 +194,22 @@ function resolveRequestSize(quality: string | undefined, size: string) {
     throw new Error("图像尺寸格式不支持，请使用 auto、9:16 或 1024x1024");
 }
 
+function resolveOpenAiRequestSize(model: string, quality: string | undefined, size: string) {
+    const requestSize = resolveRequestSize(quality, size);
+    const normalizedModel = model.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!requestSize || (!normalizedModel.startsWith("image2") && !normalizedModel.startsWith("gptimage2"))) return requestSize;
+
+    const dimensions = parseImageDimensions(requestSize);
+    if (!dimensions) return requestSize;
+    const ratio = dimensions.width / dimensions.height;
+    const supported = [
+        { value: "1024x1024", ratio: 1 },
+        { value: "1536x1024", ratio: 1.5 },
+        { value: "1024x1536", ratio: 2 / 3 },
+    ];
+    return supported.reduce((best, item) => (Math.abs(item.ratio - ratio) < Math.abs(best.ratio - ratio) ? item : best)).value;
+}
+
 function resolveGeminiImageConfig(config: AiConfig) {
     const value = config.size.trim();
     const dimensions = parseImageDimensions(value);
@@ -741,7 +757,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
         }
     }
     const quality = normalizeQuality(config.quality);
-    const requestSize = resolveRequestSize(quality, config.size);
+    const requestSize = resolveOpenAiRequestSize(requestConfig.model, quality, config.size);
     const background = normalizeBackground(config.background);
     try {
         const response = await axios.post<ImageApiResponse>(
@@ -834,7 +850,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     }
 
     const quality = normalizeQuality(config.quality);
-    const requestSize = resolveRequestSize(quality, config.size);
+    const requestSize = resolveOpenAiRequestSize(requestConfig.model, quality, config.size);
     const background = normalizeBackground(config.background);
     const formData = new FormData();
     formData.set("model", requestConfig.model);
