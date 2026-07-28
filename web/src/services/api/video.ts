@@ -153,18 +153,18 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
 }
 
 async function createWaninterVideoTask(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[], options?: RequestOptions): Promise<VideoGenerationTask> {
-    const images = await Promise.all(references.map((image) => imageToDataUrl(image)));
+    const images = await Promise.all(references.map((image) => waninterReferenceImage(image)));
     const videoUrls = videoReferences.map((video) => requirePublicReferenceUrl(video.url, "参考视频"));
     const audioUrls = audioReferences.map((audio) => requirePublicReferenceUrl(audio.url, "参考音频"));
-    const size = normalizeVideoSize(config.size);
     const seconds = normalizeVideoSeconds(config.videoSeconds);
+    const aspectRatio = normalizeSeedanceRatio(config.size);
     const payload = {
         model: modelOptionName(model),
         prompt,
         seconds,
-        // New API 的部分版本仅从兼容字段 duration 读取任务时长。
         duration: Number(seconds),
-        ...(size ? { size } : {}),
+        resolution: normalizeVideoResolution(config.vquality),
+        ...(aspectRatio !== "adaptive" ? { aspect_ratio: aspectRatio } : {}),
         ...(images.length ? { images } : {}),
         ...(videoUrls.length ? { video_urls: videoUrls } : {}),
         ...(audioUrls.length ? { audio_urls: audioUrls } : {}),
@@ -337,6 +337,11 @@ function normalizeVideoSeconds(value: string) {
 function requirePublicReferenceUrl(url: string, label: string) {
     if (/^https:\/\//i.test(url || "")) return url;
     throw new Error(`${label}需要使用公网可访问的 HTTPS URL`);
+}
+
+function waninterReferenceImage(image: ReferenceImage) {
+    const publicUrl = [image.url, image.dataUrl].find((url) => /^https:\/\//i.test(url || ""));
+    return publicUrl || imageToDataUrl(image);
 }
 
 function normalizeVideoSize(value: string) {
