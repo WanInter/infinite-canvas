@@ -157,10 +157,13 @@ async function createWaninterVideoTask(config: AiConfig, model: string, prompt: 
     const videoUrls = videoReferences.map((video) => requirePublicReferenceUrl(video.url, "参考视频"));
     const audioUrls = audioReferences.map((audio) => requirePublicReferenceUrl(audio.url, "参考音频"));
     const size = normalizeVideoSize(config.size);
+    const seconds = normalizeVideoSeconds(config.videoSeconds);
     const payload = {
         model: modelOptionName(model),
         prompt,
-        seconds: normalizeVideoSeconds(config.videoSeconds),
+        seconds,
+        // New API 的部分版本仅从兼容字段 duration 读取任务时长。
+        duration: Number(seconds),
         ...(size ? { size } : {}),
         ...(images.length ? { images } : {}),
         ...(videoUrls.length ? { video_urls: videoUrls } : {}),

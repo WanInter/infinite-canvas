@@ -5,7 +5,7 @@ description: 当前版本已实现但仍需人工验证的变更项
 
 # 待测试
 
-- Waninter API 渠道：新浏览器首次打开时应默认显示 `https://api.waninter.com` 渠道且不硬编码模型；已有配置不应被覆盖；填写生产 Token 后应能从 `/v1/models` 拉取该 Token 实际可用模型，并可分别指定生图、视频、文本和音频能力；获取 API Key 应打开 classic 主题的 `/console/token`，价格入口应打开 `/pricing`。渠道编辑应默认选择异步生图，选择异步后文生图及无蒙版参考图编辑应提交 `/v1/image/generations` 并轮询 `/v1/image/generations/{task_id}`，正确处理多图、失败、超时和取消；选择同步后应继续调用 `/v1/images/generations` 或 `/v1/images/edits`，蒙版编辑在异步模式下也应保留同步调用。使用 Waninter 视频模型时应向 `/v1/videos` 提交 JSON 和幂等键，兼容 `id` 或 `task_id` 响应并继续轮询 `/v1/videos/{task_id}`；参考视频和音频不是公网 HTTPS URL 时应在提交前提示。
+- Waninter API 渠道：新浏览器首次打开时应默认显示 `https://api.waninter.com` 渠道且不硬编码模型；已有配置不应被覆盖；填写生产 Token 后应能从 `/v1/models` 拉取该 Token 实际可用模型，并可分别指定生图、视频、文本和音频能力；获取 API Key 应打开 classic 主题的 `/console/token`，价格入口应打开 `/pricing`。渠道编辑应默认选择异步生图，选择异步后文生图及无蒙版参考图编辑应提交 `/v1/image/generations` 并轮询 `/v1/image/generations/{task_id}`，正确处理多图、失败、超时和取消；选择同步后应继续调用 `/v1/images/generations` 或 `/v1/images/edits`，蒙版编辑在异步模式下也应保留同步调用。使用 Waninter 视频模型时应向 `/v1/videos` 提交 JSON 和幂等键，`seconds` 与 `duration` 应保持同值并通过 1-25 秒校验，兼容 `id` 或 `task_id` 响应并继续轮询 `/v1/videos/{task_id}`；参考视频和音频不是公网 HTTPS URL 时应在提交前提示。
 - 生图工作台生成记录：异步接口返回可显示但无法由浏览器跨域下载的远程图片 URL 时，生成成功后仍应在左侧生成记录中出现，刷新页面后记录及远程缩略图仍可查看；单图重试也应保存记录。
 - OpenAI 固定尺寸兼容：`image1`、`image2` 及 GPT Image 模型的方形、横向和纵向比例应分别提交 `1024x1024`、`1536x1024` 和 `1024x1536`；`dall-e-3` 应分别提交 `1024x1024`、`1792x1024` 和 `1024x1792`；`dall-e-2` 应统一提交 `1024x1024`，不再提交 `880x1168` 等模型未配置尺寸；`auto` 不应携带尺寸，Gemini、火山方舟、自定义调用脚本和未知 OpenAI 兼容模型的尺寸处理应保持不变。
 - 画布文本设置：文本节点和生成配置节点切换到文本模式后应显示推理强度设置，可选择自动、低、中、高、极高；选择自动时默认 OpenAI Responses 请求不应携带 `reasoning`，选择其他档位时应携带所选强度，刷新画布后节点设置应保留；文本模型自定义调用脚本应能读取 `reasoningEffort`，OpenAI 模板应按自动或指定档位正确组装请求。
