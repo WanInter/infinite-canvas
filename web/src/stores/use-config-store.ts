@@ -68,7 +68,7 @@ const OPENAI_BASE_URL = "https://api.openai.com";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
 const ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
 export const WANINTER_API_BASE_URL = "https://api.waninter.com";
-export const WANINTER_API_KEYS_URL = `${WANINTER_API_BASE_URL}/keys`;
+export const WANINTER_API_KEYS_URL = `${WANINTER_API_BASE_URL}/console/token`;
 export const WANINTER_API_PRICING_URL = `${WANINTER_API_BASE_URL}/pricing`;
 
 export const defaultConfig: AiConfig = {
