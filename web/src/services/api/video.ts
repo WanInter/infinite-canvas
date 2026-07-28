@@ -10,7 +10,7 @@ import { runModelPlugin } from "./model-plugin";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
-type VideoResponse = { id: string; status?: string; error?: { message?: string }; url?: string; result_url?: string; video_url?: string; content?: { video_url?: string; url?: string } | null };
+type VideoResponse = { id?: string; task_id?: string; status?: string; error?: { message?: string }; url?: string; result_url?: string; video_url?: string; content?: { video_url?: string; url?: string } | null };
 type ApiVideoResponse = VideoResponse | { code?: number | string; data?: VideoResponse | null; msg?: string; message?: string; error?: { message?: string } };
 type SeedanceTask = {
     id: string;
@@ -62,6 +62,7 @@ export async function createVideoGenerationTask(config: AiConfig, prompt: string
     const script = resolveModelScript(config, selectedModel);
     if (script) return createPluginVideoTask(requestConfig, selectedModel, script, prompt, references, options);
     assertVideoConfig(requestConfig, requestConfig.model);
+    if (requestConfig.apiFormat === "waninter") return createWaninterVideoTask(requestConfig, selectedModel, prompt, references, videoReferences, audioReferences, options);
     if (isSeedanceVideoConfig(requestConfig)) {
         return createSeedanceTask(requestConfig, selectedModel, prompt, references, videoReferences, audioReferences, options);
     }
@@ -146,6 +147,37 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
         const created = unwrapVideoResponse((await axios.post<ApiVideoResponse>(aiApiUrl(config, "/videos"), body, { headers: aiHeaders(config), signal: options?.signal })).data);
         if (!created.id) throw new Error("视频接口没有返回任务 ID");
         return { id: created.id, provider: "openai", model };
+    } catch (error) {
+        throw new Error(readAxiosError(error, "视频任务创建失败"));
+    }
+}
+
+async function createWaninterVideoTask(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[], options?: RequestOptions): Promise<VideoGenerationTask> {
+    const images = await Promise.all(references.map((image) => imageToDataUrl(image)));
+    const videoUrls = videoReferences.map((video) => requirePublicReferenceUrl(video.url, "参考视频"));
+    const audioUrls = audioReferences.map((audio) => requirePublicReferenceUrl(audio.url, "参考音频"));
+    const size = normalizeVideoSize(config.size);
+    const payload = {
+        model: modelOptionName(model),
+        prompt,
+        seconds: normalizeVideoSeconds(config.videoSeconds),
+        ...(size ? { size } : {}),
+        ...(images.length ? { images } : {}),
+        ...(videoUrls.length ? { video_urls: videoUrls } : {}),
+        ...(audioUrls.length ? { audio_urls: audioUrls } : {}),
+    };
+    try {
+        const created = unwrapVideoResponse(
+            (
+                await axios.post<ApiVideoResponse>(aiApiUrl(config, "/videos"), payload, {
+                    headers: { ...aiHeaders(config, "application/json"), "X-Idempotency-Key": nanoid() },
+                    signal: options?.signal,
+                })
+            ).data,
+        );
+        const id = created.id || created.task_id;
+        if (!id) throw new Error("视频接口没有返回任务 ID");
+        return { id, provider: "openai", model };
     } catch (error) {
         throw new Error(readAxiosError(error, "视频任务创建失败"));
     }
@@ -297,6 +329,11 @@ function assertVideoConfig(config: AiConfig, model: string) {
 function normalizeVideoSeconds(value: string) {
     const seconds = Math.floor(Number(value) || 6);
     return String(Math.max(1, Math.min(20, seconds)));
+}
+
+function requirePublicReferenceUrl(url: string, label: string) {
+    if (/^https:\/\//i.test(url || "")) return url;
+    throw new Error(`${label}需要使用公网可访问的 HTTPS URL`);
 }
 
 function normalizeVideoSize(value: string) {

@@ -9,7 +9,7 @@ import { exportAppConfig, importAppConfig } from "@/services/config-file";
 import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
-import { createModelChannel, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { createModelChannel, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, WANINTER_API_BASE_URL, type AiConfig, type ApiCallFormat, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 
 type ModelGroup = {
     capability: ModelCapability;
@@ -97,6 +97,17 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
 
     const addChannel = () => {
         const channel = createModelChannel({ name: `渠道 ${config.channels.length + 1}` });
+        updateChannels([...config.channels, channel]);
+        setEditingChannelId(channel.id);
+    };
+
+    const addWaninterChannel = () => {
+        const existing = config.channels.find((channel) => channel.apiFormat === "waninter");
+        if (existing) {
+            setEditingChannelId(existing.id);
+            return;
+        }
+        const channel = createModelChannel({ name: "Waninter API", baseUrl: WANINTER_API_BASE_URL, apiFormat: "waninter" });
         updateChannels([...config.channels, channel]);
         setEditingChannelId(channel.id);
     };
@@ -189,9 +200,12 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                             <div>
                                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                                     <div className="text-xs text-stone-500">每个渠道选择一个协议并拉取模型，为每个模型指定能力（生图/视频/文本/音频），并可自定义调用脚本。</div>
-                                    <Button type="primary" icon={<Plus className="size-4" />} onClick={addChannel}>
-                                        新增渠道
-                                    </Button>
+                                    <div className="flex gap-2">
+                                        <Button onClick={addWaninterChannel}>Waninter API</Button>
+                                        <Button type="primary" icon={<Plus className="size-4" />} onClick={addChannel}>
+                                            新增渠道
+                                        </Button>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     {config.channels.map((channel) => (
@@ -382,6 +396,7 @@ function normalizeImageCount(value: string) {
 }
 
 function apiFormatLabel(apiFormat: ApiCallFormat) {
+    if (apiFormat === "waninter") return "Waninter API";
     if (apiFormat === "gemini") return "Gemini";
     if (apiFormat === "ark") return "火山方舟";
     return "OpenAI";

@@ -1,12 +1,13 @@
 import { Button, Drawer, Input, Segmented, Select, Space } from "antd";
-import { ListPlus, Trash2 } from "lucide-react";
+import { ExternalLink, ListPlus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { defaultBaseUrlForApiFormat, guessCapability, normalizeChannelModels, type ApiCallFormat, type ChannelModel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { defaultBaseUrlForApiFormat, guessCapability, normalizeChannelModels, WANINTER_API_KEYS_URL, WANINTER_API_PRICING_URL, type ApiCallFormat, type ChannelModel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 import { ModelScriptEditor } from "./model-script-editor";
 import { ModelSelectModal } from "./model-select-modal";
 
 const apiFormatOptions: Array<{ label: string; value: ApiCallFormat }> = [
+    { label: "Waninter API", value: "waninter" },
     { label: "OpenAI", value: "openai" },
     { label: "Gemini", value: "gemini" },
     { label: "火山方舟", value: "ark" },
@@ -87,6 +88,16 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                     <span className="mb-1 block text-sm font-medium">API Key</span>
                     <Input.Password value={draft.apiKey} onChange={(event) => patch({ apiKey: event.target.value })} placeholder="sk-..." />
                 </label>
+                {draft.apiFormat === "waninter" ? (
+                    <div className="flex gap-2 md:col-span-2">
+                        <Button href={WANINTER_API_KEYS_URL} target="_blank" rel="noreferrer" icon={<ExternalLink className="size-3.5" />}>
+                            获取 API Key
+                        </Button>
+                        <Button href={WANINTER_API_PRICING_URL} target="_blank" rel="noreferrer" icon={<ExternalLink className="size-3.5" />}>
+                            查看模型价格
+                        </Button>
+                    </div>
+                ) : null}
             </div>
 
             <div className="mt-6 mb-3 flex flex-wrap items-center justify-between gap-2">

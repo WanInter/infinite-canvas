@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
 
-export type ApiCallFormat = "openai" | "gemini" | "ark";
+export type ApiCallFormat = "waninter" | "openai" | "gemini" | "ark";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
 
@@ -65,32 +65,30 @@ const CHANNEL_MODEL_SEPARATOR = "::";
 const OPENAI_BASE_URL = "https://api.openai.com";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
 const ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
+export const WANINTER_API_BASE_URL = "https://api.waninter.com";
+export const WANINTER_API_KEYS_URL = `${WANINTER_API_BASE_URL}/keys`;
+export const WANINTER_API_PRICING_URL = `${WANINTER_API_BASE_URL}/pricing`;
 
 export const defaultConfig: AiConfig = {
     channelMode: "local",
-    baseUrl: OPENAI_BASE_URL,
+    baseUrl: WANINTER_API_BASE_URL,
     apiKey: "",
-    apiFormat: "openai",
+    apiFormat: "waninter",
     channels: [
         {
-            id: "default",
-            name: "默认渠道",
-            baseUrl: OPENAI_BASE_URL,
+            id: "waninter",
+            name: "Waninter API",
+            baseUrl: WANINTER_API_BASE_URL,
             apiKey: "",
-            apiFormat: "openai",
-            models: [
-                { name: "gpt-image-2", capability: "image" },
-                { name: "grok-imagine-video", capability: "video" },
-                { name: "gpt-5.5", capability: "text" },
-                { name: "gpt-4o-mini-tts", capability: "audio" },
-            ],
+            apiFormat: "waninter",
+            models: [],
         },
     ],
-    model: "default::gpt-image-2",
-    imageModel: "default::gpt-image-2",
-    videoModel: "default::grok-imagine-video",
-    textModel: "default::gpt-5.5",
-    audioModel: "default::gpt-4o-mini-tts",
+    model: "",
+    imageModel: "",
+    videoModel: "",
+    textModel: "",
+    audioModel: "",
     audioVoice: "alloy",
     audioFormat: "mp3",
     audioSpeed: "1",
@@ -101,7 +99,7 @@ export const defaultConfig: AiConfig = {
     videoWatermark: "false",
     systemPrompt: "",
     reasoningEffort: "auto",
-    models: ["default::gpt-image-2", "default::grok-imagine-video", "default::gpt-5.5", "default::gpt-4o-mini-tts"],
+    models: [],
     quality: "auto",
     size: "1:1",
     background: "",
@@ -369,13 +367,14 @@ function normalizeChannels(config: AiConfig) {
 }
 
 export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
+    if (apiFormat === "waninter") return WANINTER_API_BASE_URL;
     if (apiFormat === "gemini") return GEMINI_BASE_URL;
     if (apiFormat === "ark") return ARK_BASE_URL;
     return OPENAI_BASE_URL;
 }
 
 function normalizeApiFormat(apiFormat: unknown): ApiCallFormat {
-    return apiFormat === "gemini" || apiFormat === "ark" ? apiFormat : "openai";
+    return apiFormat === "waninter" || apiFormat === "gemini" || apiFormat === "ark" ? apiFormat : "openai";
 }
 
 function uniqueModelOptions(models: string[]) {
