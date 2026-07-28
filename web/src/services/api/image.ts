@@ -197,17 +197,23 @@ function resolveRequestSize(quality: string | undefined, size: string) {
 function resolveOpenAiRequestSize(model: string, quality: string | undefined, size: string) {
     const requestSize = resolveRequestSize(quality, size);
     const normalizedModel = model.toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (!requestSize || (!normalizedModel.startsWith("image2") && !normalizedModel.startsWith("gptimage2"))) return requestSize;
+    if (!requestSize) return requestSize;
+
+    const supported =
+        normalizedModel.startsWith("dalle2")
+            ? ["1024x1024"]
+            : normalizedModel.startsWith("dalle3")
+              ? ["1024x1024", "1792x1024", "1024x1792"]
+              : normalizedModel.startsWith("image1") || normalizedModel.startsWith("image2") || normalizedModel.startsWith("gptimage") || normalizedModel.startsWith("chatgptimage")
+                ? ["1024x1024", "1536x1024", "1024x1536"]
+                : undefined;
+    if (!supported) return requestSize;
 
     const dimensions = parseImageDimensions(requestSize);
     if (!dimensions) return requestSize;
     const ratio = dimensions.width / dimensions.height;
-    const supported = [
-        { value: "1024x1024", ratio: 1 },
-        { value: "1536x1024", ratio: 1.5 },
-        { value: "1024x1536", ratio: 2 / 3 },
-    ];
-    return supported.reduce((best, item) => (Math.abs(item.ratio - ratio) < Math.abs(best.ratio - ratio) ? item : best)).value;
+    if (supported.length === 1 || ratio === 1) return supported[0];
+    return ratio > 1 ? supported[1] : supported[2];
 }
 
 function resolveGeminiImageConfig(config: AiConfig) {
