@@ -185,12 +185,7 @@ export default function ImagePage() {
         if (agentTaskId) updateAgentTask(agentTaskId, { status: successCount ? "succeeded" : "failed", successCount, failCount, error: successCount ? undefined : error });
 
         try {
-            const logImages = await Promise.all(
-                successImages.map(async (image) => {
-                    const stored = await uploadImage(image.dataUrl);
-                    return { ...image, dataUrl: stored.url, storageKey: stored.storageKey, width: stored.width, height: stored.height, bytes: stored.bytes, mimeType: stored.mimeType };
-                }),
-            );
+            const logImages = await Promise.all(successImages.map(storeGeneratedImageForLog));
             saveLog(
                 buildLog({
                     prompt: text,
@@ -345,9 +340,8 @@ export default function ImagePage() {
         const retryStartedAt = performance.now();
         try {
             const image = await runGenerationSlot(index, snapshot);
-            const stored = await uploadImage(image.dataUrl);
-            const logImage = { ...image, dataUrl: stored.url, storageKey: stored.storageKey, width: stored.width, height: stored.height, bytes: stored.bytes, mimeType: stored.mimeType };
-            setResults((value) => updateResultAt(value, index, { image: { ...image, dataUrl: stored.url, storageKey: stored.storageKey } }));
+            const logImage = await storeGeneratedImageForLog(image);
+            setResults((value) => updateResultAt(value, index, { image: logImage }));
             saveLog(
                 buildLog({
                     prompt: snapshot.text,
@@ -660,6 +654,15 @@ function FailedImageCard({ error, onRetry }: { error: string; onRetry: () => voi
 
 function updateResultAt(results: GenerationResult[], index: number, next: Partial<GenerationResult>) {
     return results.map((item, itemIndex) => (itemIndex === index ? { ...item, ...next } : item));
+}
+
+async function storeGeneratedImageForLog(image: GeneratedImage) {
+    try {
+        const stored = await uploadImage(image.dataUrl);
+        return { ...image, dataUrl: stored.url, storageKey: stored.storageKey, width: stored.width, height: stored.height, bytes: stored.bytes, mimeType: stored.mimeType };
+    } catch {
+        return image;
+    }
 }
 
 function LogPanel({
