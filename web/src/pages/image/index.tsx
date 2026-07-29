@@ -186,7 +186,7 @@ export default function ImagePage() {
 
         try {
             const logImages = await Promise.all(successImages.map(storeGeneratedImageForLog));
-            saveLog(
+            await saveLog(
                 buildLog({
                     prompt: text,
                     model,
@@ -284,8 +284,9 @@ export default function ImagePage() {
         setDeleteConfirmOpen(false);
     };
 
-    const saveLog = (log: GenerationLog) => {
-        void logStore.setItem(log.id, serializeLog(log)).then(refreshLogs);
+    const saveLog = async (log: GenerationLog) => {
+        await logStore.setItem(log.id, serializeLog(log));
+        await refreshLogs();
     };
 
     const refreshLogs = async () => setLogs(await readStoredLogs());
@@ -342,7 +343,7 @@ export default function ImagePage() {
             const image = await runGenerationSlot(index, snapshot);
             const logImage = await storeGeneratedImageForLog(image);
             setResults((value) => updateResultAt(value, index, { image: logImage }));
-            saveLog(
+            await saveLog(
                 buildLog({
                     prompt: snapshot.text,
                     model,
