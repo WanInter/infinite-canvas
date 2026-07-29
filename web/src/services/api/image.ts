@@ -595,6 +595,54 @@ async function requestStreamingResponse(config: AiConfig, body: Record<string, u
     return { ...result, content: state.text || result.content };
 }
 
+async function requestStreamingChatCompletion(config: AiConfig, messages: AiTextMessage[], onDelta?: (text: string) => void, options?: RequestOptions): Promise<ToolResponseResult> {
+    const response = await fetch(aiApiUrl(config, "/chat/completions"), {
+        method: "POST",
+        headers: { ...aiHeaders(config, "application/json"), Accept: "text/event-stream" },
+        body: JSON.stringify({ model: config.model, messages, stream: true }),
+        signal: options?.signal,
+    });
+    if (!response.ok) throw new Error(await readFetchError(response, "请求失败"));
+    const contentType = response.headers.get("content-type") || "";
+    if (!response.body || !contentType.includes("text/event-stream")) {
+        const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }>; error?: { message?: string } };
+        if (payload.error?.message) throw new Error(payload.error.message);
+        const content = payload.choices?.[0]?.message?.content || "";
+        onDelta?.(content);
+        return { content, toolCalls: [] };
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let text = "";
+    const consume = (block: string) => {
+        const data = block.split(/\r?\n/).filter((line) => line.startsWith("data:")).map((line) => line.slice(5).replace(/^ /, "")).join("\n").trim();
+        if (!data || data === "[DONE]") return;
+        const event = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string | Array<{ text?: string }> } }>; error?: { message?: string } };
+        if (event.error?.message) throw new Error(event.error.message);
+        const content = event.choices?.[0]?.delta?.content;
+        const delta = typeof content === "string" ? content : Array.isArray(content) ? content.map((item) => item.text || "").join("") : "";
+        if (delta) {
+            text += delta;
+            onDelta?.(text);
+        }
+    };
+    for (;;) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        for (;;) {
+            const match = buffer.match(/\r?\n\r?\n/);
+            if (!match) break;
+            const index = match.index ?? 0;
+            consume(buffer.slice(0, index));
+            buffer = buffer.slice(index + match[0].length);
+        }
+        if (done) break;
+    }
+    if (buffer.trim()) consume(buffer);
+    return { content: text, toolCalls: [] };
+}
+
 function toGeminiBody(config: AiConfig, messages: ResponseInputMessage[], extra?: Record<string, unknown>) {
     const systemText = [
         config.systemPrompt.trim(),
@@ -985,6 +1033,11 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
     try {
         if (requestConfig.apiFormat === "gemini") {
             const answer = (await requestGeminiStreamingResponse(requestConfig, toGeminiBody(requestConfig, messages), onDelta, options)).content || "没有返回内容";
+            if (answer === "没有返回内容") onDelta(answer);
+            return answer;
+        }
+        if (requestConfig.apiFormat === "waninter") {
+            const answer = (await requestStreamingChatCompletion(requestConfig, withSystemMessage(requestConfig, messages), onDelta, options)).content || "没有返回内容";
             if (answer === "没有返回内容") onDelta(answer);
             return answer;
         }

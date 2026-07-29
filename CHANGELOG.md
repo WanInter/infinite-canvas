@@ -7,6 +7,7 @@
 + [修复] Waninter API 获取 Key 入口改为 classic 主题的 Token 管理页面。
 + [修复] 异步生图结果为跨域远程 URL 时仍会保存到生图工作台的生成记录。
 + [修复] Waninter 视频请求按 API 规范提交时长、分辨率和画面比例，并优先使用参考图公网地址。
++ [修复] Waninter 文本模型改用 `/v1/chat/completions`，避免误调用未实现的 Responses 接口。
 
 ## v0.11.0 - 2026-07-28
 
