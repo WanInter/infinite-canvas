@@ -17,7 +17,7 @@ import { useAssetStore } from "@/stores/use-asset-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { cropDataUrl, splitDataUrl, upscaleDataUrl } from "@/lib/canvas/canvas-image-data";
 import { fitNodeSize, nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
-import { App, Button, Modal } from "antd";
+import { App, Button, Input, Modal, Segmented } from "antd";
 import { NODE_DEFAULT_SIZE, getNodeSpec } from "@/constant/canvas";
 import { ActiveConnectionPath, ConnectionPath } from "@/components/canvas/canvas-connections";
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
@@ -143,6 +143,19 @@ export default function CanvasPage() {
     return <InfiniteCanvasPage />;
 }
 
+function mediaUrlMimeType(pathname: string, kind: "image" | "video") {
+    const extension = pathname.split(".").pop()?.toLowerCase();
+    if (kind === "image") {
+        if (extension === "png") return "image/png";
+        if (extension === "webp") return "image/webp";
+        if (extension === "gif") return "image/gif";
+        return "image/jpeg";
+    }
+    if (extension === "webm") return "video/webm";
+    if (extension === "mov") return "video/quicktime";
+    return "video/mp4";
+}
+
 function InfiniteCanvasPage() {
     const { message, modal } = App.useApp();
     // 订阅节点注册表版本,插件动态注册/卸载后驱动画布重渲染
@@ -160,6 +173,9 @@ function InfiniteCanvasPage() {
     const containerRef = useRef<HTMLDivElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const uploadTargetRef = useRef<{ nodeId?: string; position?: Position } | null>(null);
+    const [mediaUrlDialogOpen, setMediaUrlDialogOpen] = useState(false);
+    const [mediaUrlKind, setMediaUrlKind] = useState<"image" | "video">("image");
+    const [mediaUrlInput, setMediaUrlInput] = useState("");
     const clipboardRef = useRef<CanvasClipboard | null>(null);
     const historyRef = useRef<{ past: CanvasHistoryEntry[]; future: CanvasHistoryEntry[] }>({ past: [], future: [] });
     const lastHistoryRef = useRef<CanvasHistoryEntry | null>(null);
@@ -1313,6 +1329,33 @@ function InfiniteCanvasPage() {
         setSelectedConnectionId(null);
         setDialogNodeId(id);
     }, []);
+
+    const createMediaUrlNode = useCallback(() => {
+        const value = mediaUrlInput.trim();
+        let parsed: URL;
+        try {
+            parsed = new URL(value);
+        } catch {
+            message.error("请输入有效的媒体 URL");
+            return;
+        }
+        if (parsed.protocol !== "https:") {
+            message.error("媒体 URL 必须使用 HTTPS");
+            return;
+        }
+        const fileName = decodeURIComponent(parsed.pathname.split("/").filter(Boolean).pop() || (mediaUrlKind === "image" ? "参考图片" : "参考视频"));
+        const node = createCanvasNode(mediaUrlKind === "image" ? CanvasNodeType.Image : CanvasNodeType.Video, getCanvasCenter(), {
+            content: parsed.toString(),
+            sourceUrl: parsed.toString(),
+            mimeType: mediaUrlMimeType(parsed.pathname, mediaUrlKind),
+            status: NODE_STATUS_SUCCESS,
+        });
+        setNodes((prev) => [...prev, { ...node, title: fileName }]);
+        setSelectedNodeIds(new Set([node.id]));
+        setSelectedConnectionId(null);
+        setMediaUrlDialogOpen(false);
+        setMediaUrlInput("");
+    }, [getCanvasCenter, mediaUrlInput, mediaUrlKind, message]);
 
     const createAudioFileNode = useCallback(async (file: File, position: Position) => {
         const audio = await uploadMediaFile(file, "audio");
@@ -2943,6 +2986,7 @@ function InfiniteCanvasPage() {
                     showImageInfo={showImageInfo}
                     onAddImage={() => createNode(CanvasNodeType.Image)}
                     onAddVideo={() => createNode(CanvasNodeType.Video)}
+                    onAddMediaUrl={() => setMediaUrlDialogOpen(true)}
                     onAddAudio={() => createNode(CanvasNodeType.Audio)}
                     onAddText={() => createNode(CanvasNodeType.Text)}
                     onAddConfig={() => createNode(CanvasNodeType.Config)}
@@ -2986,6 +3030,37 @@ function InfiniteCanvasPage() {
 
                 <CanvasNodeInfoModal node={infoNode} open={Boolean(infoNode)} onClose={() => setInfoNodeId(null)} />
                 <CanvasPluginManagerModal open={pluginManagerOpen} onClose={() => setPluginManagerOpen(false)} />
+
+                <Modal
+                    title="添加媒体 URL"
+                    open={mediaUrlDialogOpen}
+                    okText="添加到画布"
+                    cancelText="取消"
+                    onOk={createMediaUrlNode}
+                    onCancel={() => {
+                        setMediaUrlDialogOpen(false);
+                        setMediaUrlInput("");
+                    }}
+                >
+                    <Segmented
+                        block
+                        value={mediaUrlKind}
+                        options={[
+                            { label: "图片", value: "image" },
+                            { label: "视频", value: "video" },
+                        ]}
+                        onChange={(value) => setMediaUrlKind(value as "image" | "video")}
+                    />
+                    <Input
+                        autoFocus
+                        className="mt-3"
+                        value={mediaUrlInput}
+                        placeholder={mediaUrlKind === "image" ? "https://example.com/reference.jpg" : "https://example.com/reference.mp4"}
+                        onChange={(event) => setMediaUrlInput(event.target.value)}
+                        onPressEnter={createMediaUrlNode}
+                    />
+                    <div className="mt-2 text-xs text-stone-500">URL 必须是上游可匿名访问的 HTTPS 媒体直链，不能是需要登录的预览或播放页面。</div>
+                </Modal>
 
                 {cropNode?.metadata?.content ? <CanvasNodeCropDialog dataUrl={cropNode.metadata.content} open={Boolean(cropNode)} onClose={() => setCropNodeId(null)} onConfirm={(crop) => void cropImageNode(cropNode!, crop)} /> : null}
 
