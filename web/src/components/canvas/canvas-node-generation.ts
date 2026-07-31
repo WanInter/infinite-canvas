@@ -89,15 +89,18 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
     const referenceAudios = selectedInputs.map((input) => input.audio).filter((audio): audio is ReferenceAudio => Boolean(audio));
 
     if (!hasToken) {
+        const fallbackImages = inputs.map((input) => input.image).filter((image): image is ReferenceImage => Boolean(image));
+        const fallbackVideos = inputs.map((input) => input.video).filter((video): video is ReferenceVideo => Boolean(video));
+        const fallbackAudios = inputs.map((input) => input.audio).filter((audio): audio is ReferenceAudio => Boolean(audio));
         return {
             prompt,
-            referenceImages: [],
-            referenceVideos: [],
-            referenceAudios: [],
+            referenceImages: fallbackImages,
+            referenceVideos: fallbackVideos,
+            referenceAudios: fallbackAudios,
             textCount: 0,
-            imageCount: 0,
-            videoCount: 0,
-            audioCount: 0,
+            imageCount: fallbackImages.length,
+            videoCount: fallbackVideos.length,
+            audioCount: fallbackAudios.length,
         };
     }
 
@@ -159,11 +162,13 @@ function generationLabel(type: NodeGenerationInput["type"], index: number) {
 
 function readReferenceImage(node: CanvasNodeData): ReferenceImage | null {
     if (node.type !== CanvasNodeType.Image || !node.metadata?.content) return null;
+    const url = node.metadata.sourceUrl || (/^https:\/\//i.test(node.metadata.content) ? node.metadata.content : undefined);
     return {
         id: node.id,
         name: `${node.title || node.id}.png`,
         type: node.metadata.mimeType || "image/png",
         dataUrl: node.metadata.content,
+        url,
         storageKey: node.metadata.storageKey,
     };
 }

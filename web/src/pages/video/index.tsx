@@ -129,7 +129,7 @@ export default function VideoPage() {
         const nextReferences = await Promise.all(
             imageFiles.map(async (file) => {
                 const image = await uploadImage(file);
-                return { id: nanoid(), name: file.name, type: image.mimeType, dataUrl: image.url, storageKey: image.storageKey };
+                return { id: nanoid(), name: file.name, type: image.mimeType, dataUrl: image.url, url: image.sourceUrl, storageKey: image.storageKey };
             }),
         );
         const nextVideoReferences = await Promise.all(
@@ -289,7 +289,7 @@ export default function VideoPage() {
             setPrompt(payload.content);
         } else if (payload.kind === "image") {
             const stored = await uploadImage(payload.dataUrl);
-            setReferences((value) => [...value, { id: nanoid(), name: payload.title, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }].slice(0, SEEDANCE_REFERENCE_LIMITS.images));
+            setReferences((value) => [...value, { id: nanoid(), name: payload.title, type: stored.mimeType, dataUrl: stored.url, url: stored.sourceUrl, storageKey: stored.storageKey }].slice(0, SEEDANCE_REFERENCE_LIMITS.images));
         } else if (payload.kind === "video") {
             setVideoReferences((value) => [...value, { id: nanoid(), name: payload.title, type: "video/mp4", url: payload.url, storageKey: payload.storageKey, width: payload.width, height: payload.height }].slice(0, SEEDANCE_REFERENCE_LIMITS.videos));
         }

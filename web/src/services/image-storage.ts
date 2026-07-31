@@ -5,6 +5,7 @@ import { readImageMeta } from "@/lib/image-utils";
 
 export type UploadedImage = {
     url: string;
+    sourceUrl?: string;
     storageKey: string;
     width: number;
     height: number;
@@ -18,12 +19,13 @@ const objectUrls = new Map<string, string>();
 
 export async function uploadImage(input: string | Blob): Promise<UploadedImage> {
     const blob = typeof input === "string" ? await (await fetch(input)).blob() : input;
+    const sourceUrl = typeof input === "string" && /^https:\/\//i.test(input) ? input : undefined;
     const storageKey = `image:${nanoid()}`;
     await store.setItem(storageKey, blob);
     const url = URL.createObjectURL(blob);
     objectUrls.set(storageKey, url);
     const meta = await readImageMeta(url);
-    return { url, storageKey, width: meta.width, height: meta.height, bytes: blob.size, mimeType: blob.type || meta.mimeType };
+    return { url, sourceUrl, storageKey, width: meta.width, height: meta.height, bytes: blob.size, mimeType: blob.type || meta.mimeType };
 }
 
 export async function resolveImageUrl(storageKey?: string, fallback = "") {
