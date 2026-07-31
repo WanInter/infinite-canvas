@@ -91,7 +91,7 @@ function sleep(ms: number, signal?: AbortSignal) {
 function createPoll(signal?: AbortSignal) {
     return async function poll<T, R>(request: () => Promise<T>, extract: (value: T) => R | null | undefined | false, options?: PluginPollOptions): Promise<R> {
         const intervalMs = options?.intervalMs ?? 2500;
-        const timeoutMs = options?.timeoutMs ?? 300000;
+        const timeoutMs = options?.timeoutMs ?? 1800000;
         const deadline = performance.now() + timeoutMs;
         for (;;) {
             if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
@@ -259,7 +259,7 @@ const task = await request({
 return await poll(
   () => request({ method: "get", url: \`\${baseUrl}/v1/videos/\${task.id}\`, headers }),
   (state) => state.status === "completed" ? { url: state.video_url || state.url } : null,
-  { intervalMs: 2500, timeoutMs: 300000 },
+  { intervalMs: 2500, timeoutMs: 1800000 },
 );`,
         },
         {
@@ -284,7 +284,7 @@ return await poll(
     if (!uri) throw new Error("Gemini 未返回视频 URI");
     return { url: uri.includes("key=") ? uri : \`\${uri}\${uri.includes("?") ? "&" : "?"}key=\${apiKey}\` };
   },
-  { intervalMs: 5000, timeoutMs: 300000 },
+  { intervalMs: 5000, timeoutMs: 1800000 },
 );`,
         },
     ],
